@@ -1,42 +1,190 @@
+body {
+  background: linear-gradient(120deg, #f8fafc 0%, #e9e9ec 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
 #root {
-  max-width: 1280px;
+  max-width: 480px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 2rem 0 3rem 0;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+.apple-ui header {
+  margin-bottom: 1.5rem;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+.apple-ui h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #222;
+  margin-bottom: 0.2em;
 }
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.apple-ui p {
+  color: #666;
+  margin-top: 0;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+.controls label {
+  font-size: 1rem;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  justify-content: center;
+}
+.tag {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 1em;
+  padding: 0.3em 1em;
+  font-size: 0.95em;
+  color: #555;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.tag.selected {
+  background: #007aff;
+  color: #fff;
 }
 
-.card {
-  padding: 2em;
+.card-game {
+  background: #fff;
+  border-radius: 1.5em;
+  box-shadow: 0 6px 32px 0 rgba(0,0,0,0.10), 0 1.5px 4px 0 rgba(0,0,0,0.04);
+  padding: 2.2em 1.2em 1.5em 1.2em;
+  margin: 0 auto 2em auto;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 320px;
+  position: relative;
+  transition: box-shadow 0.2s;
+}
+.card-game .prompt {
+  margin-bottom: 1.2em;
+}
+.card-game h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0.2em 0 0.5em 0;
+  color: #222;
+}
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7em;
+  width: 100%;
+  margin-bottom: 1em;
+}
+.choice-btn {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 1em;
+  padding: 0.8em 0.5em;
+  font-size: 1.1em;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,0.03);
+}
+.choice-btn:hover:not(:disabled) {
+  background: #e0e7ef;
+}
+.choice-btn.correct {
+  background: #34c759;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px 0 rgba(52,199,89,0.10);
+}
+.choice-btn.wrong {
+  background: #ff3b30;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px 0 rgba(255,59,48,0.10);
+}
+.choice-btn.flash {
+  animation: flash 0.7s;
+}
+@keyframes flash {
+  0% { box-shadow: 0 0 0 0 #34c75944; }
+  100% { box-shadow: 0 0 0 16px #34c75900; }
 }
 
-.read-the-docs {
+.actions {
+  margin-bottom: 0.7em;
+}
+.help-btn {
+  background: #007aff;
+  color: #fff;
+  border: none;
+  border-radius: 1em;
+  padding: 0.5em 1.5em;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 0.2em;
+}
+.help-btn:disabled {
+  background: #b0b0b0;
+  color: #fff;
+  cursor: not-allowed;
+}
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.95em;
   color: #888;
+  margin-top: 0.7em;
+}
+.tags-list {
+  text-align: left;
+}
+.difficulty {
+  text-align: right;
+}
+
+.stats {
+  margin-top: 1.5em;
+  background: #f3f4f6;
+  border-radius: 1em;
+  padding: 1em 0.5em;
+  color: #333;
+  font-size: 1.05em;
+  box-shadow: 0 1px 4px 0 rgba(0,0,0,0.03);
+}
+
+footer {
+  margin-top: 2em;
+  color: #aaa;
+  font-size: 0.95em;
+}
+
+@media (max-width: 600px) {
+  #root {
+    padding: 0.5rem 0 2rem 0;
+  }
+  .card-game {
+    padding: 1.2em 0.3em 1em 0.3em;
+    min-height: 220px;
+  }
+  .apple-ui h1 {
+    font-size: 1.3rem;
+  }
 }
