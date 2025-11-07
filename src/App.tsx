@@ -1,164 +1,60 @@
-import { useMemo, useState, useEffect } from "react";
+import { useEffect } from "react";
 import "./App.css";
 import { VOCAB, DIFFICULTIES } from "./data/vocab";
-import type { VocabItem } from "./data/vocab";
-import { loadStats, saveStats, clearStats, calculateAccuracy, updateWordStats, getFailedWordIds, getTotalUniqueWordsAttempted } from "./utils/storage";
-import type { Stats } from "./utils/storage";
-
-type Mode = "de-to-en" | "en-to-de";
-
-function filterVocab(
-  items: VocabItem[],
-  difficulty?: string,
-  failedWordIds?: string[]
-) {
-  return items.filter((it) => {
-    // If filtering by failed words, only include those IDs
-    if (difficulty === "failed" && failedWordIds) {
-      return failedWordIds.includes(it.id);
-    }
-    // Otherwise apply difficulty filter
-    if (!difficulty || difficulty === "all") return true;
-    if (difficulty && it.difficulty !== difficulty) return false;
-    return true;
-  });
-}
-
-function useShuffled(items: VocabItem[]) {
-  return useMemo(() => {
-    const copy = [...items];
-    for (let i = copy.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-  }, [items]);
-}
-
-function getChoices(
-  vocab: VocabItem[],
-  current: VocabItem,
-  mode: Mode
-): { text: string; isCorrect: boolean }[] {
-  // Pick 3 random distractors (not the current)
-  const others = vocab.filter((v) => v.id !== current.id);
-  const shuffled = others.sort(() => Math.random() - 0.5);
-  const distractors = shuffled.slice(0, 3);
-  const correct = mode === "de-to-en" ? current.en : current.de;
-  const options = [
-    { text: correct, isCorrect: true },
-    ...distractors.map((v) => ({
-      text: mode === "de-to-en" ? v.en : v.de,
-      isCorrect: false,
-    })),
-  ];
-  // Shuffle options
-  return options.sort(() => Math.random() - 0.5);
-}
+import { calculateAccuracy } from "./utils/storage";
+import { useQuizStore } from "./store/quizStore";
 
 function App() {
-  const [mode, setMode] = useState<Mode>("de-to-en");
-  const [difficulty, setDifficulty] = useState<string>("all");
-  const [index, setIndex] = useState(0);
-  const [showHelp, setShowHelp] = useState(false);
-  const [correct, setCorrect] = useState<number>(0);
-  const [attempts, setAttempts] = useState<number>(0);
-  const [lastResult, setLastResult] = useState<null | boolean>(null);
-  const [userInput, setUserInput] = useState<string>("");
-  const [hasAnswered, setHasAnswered] = useState<boolean>(false);
-  const [menuOpen, setMenuOpen] = useState<boolean>(false);
-  const [statsExpanded, setStatsExpanded] = useState<boolean>(false);
-  const [stats, setStats] = useState<Stats>({ correct: 0, attempts: 0, lastSessionDate: new Date().toISOString(), wordStats: {} });
-
-  // Load stats from localStorage on mount
+  // Initialize store on mount
   useEffect(() => {
-    const loadedStats = loadStats();
-    setStats(loadedStats);
-    setCorrect(loadedStats.correct);
-    setAttempts(loadedStats.attempts);
+    useQuizStore.getState().initializeQuiz(VOCAB);
   }, []);
 
-  // Save stats to localStorage whenever they change
-  useEffect(() => {
-    saveStats(stats);
-  }, [stats]);
+  // Select state from store
+  const mode = useQuizStore((state) => state.mode);
+  const difficulty = useQuizStore((state) => state.difficulty);
+  const index = useQuizStore((state) => state.index);
+  const displayWord = useQuizStore((state) => state.displayWord);
+  const displayChoices = useQuizStore((state) => state.displayChoices);
+  const showHelp = useQuizStore((state) => state.showHelp);
+  const correct = useQuizStore((state) => state.correct);
+  const attempts = useQuizStore((state) => state.attempts);
+  const lastResult = useQuizStore((state) => state.lastResult);
+  const userInput = useQuizStore((state) => state.userInput);
+  const hasAnswered = useQuizStore((state) => state.hasAnswered);
+  const menuOpen = useQuizStore((state) => state.menuOpen);
+  const statsExpanded = useQuizStore((state) => state.statsExpanded);
+  const shuffled = useQuizStore((state) => state.shuffled);
 
-  // Reset showHelp when index changes to prevent hints showing on next question
-  useEffect(() => {
-    setShowHelp(false);
-  }, [index]);
+  // Select actions from store
+  const setMode = useQuizStore((state) => state.setMode);
+  const setDifficulty = useQuizStore((state) => state.setDifficulty);
+  const handleAnswer = useQuizStore((state) => state.handleAnswer);
+  const setUserInput = useQuizStore((state) => state.setUserInput);
+  const submitTextAnswer = useQuizStore((state) => state.submitTextAnswer);
+  const toggleShowHelp = useQuizStore((state) => state.toggleShowHelp);
+  const setMenuOpen = useQuizStore((state) => state.setMenuOpen);
+  const setStatsExpanded = useQuizStore((state) => state.setStatsExpanded);
+  const resetStats = useQuizStore((state) => state.resetStats);
+  const restartQuiz = useQuizStore((state) => state.restartQuiz);
+  const getFailedWordIds = useQuizStore((state) => state.getFailedWordIds);
+  const getTotalUniqueWords = useQuizStore((state) => state.getTotalUniqueWords);
 
-  const failedWordIds = useMemo(() => getFailedWordIds(stats), [stats]);
-  const totalUniqueWords = useMemo(() => getTotalUniqueWordsAttempted(stats), [stats]);
-
-  const filtered = useMemo(
-    () => filterVocab(VOCAB, difficulty, failedWordIds),
-    [difficulty, failedWordIds]
-  );
-  const shuffled = useShuffled(filtered);
-  const current = shuffled[index % Math.max(1, shuffled.length)];
-  const choices = useMemo(
-    () => getChoices(shuffled, current, mode),
-    [shuffled, current, mode]
-  );
-
-  function handleResetStats() {
-    const resetStats = clearStats();
-    setStats(resetStats);
-    setCorrect(resetStats.correct);
-    setAttempts(resetStats.attempts);
-    setMenuOpen(false);
-  }
-
-  function handleRestartQuiz() {
-    setIndex(0);
-    setUserInput("");
-    setShowHelp(false);
-    setLastResult(null);
-    setHasAnswered(false);
-    setMenuOpen(false);
-  }
-
-  function handleChoice(isCorrect: boolean) {
-    const newAttempts = attempts + 1;
-    const newCorrect = correct + (isCorrect ? 1 : 0);
-
-    setAttempts(newAttempts);
-    if (isCorrect) setCorrect(newCorrect);
-
-    // Update word-level stats
-    const updatedStats = updateWordStats(stats, current.id, isCorrect);
-    setStats({
-      ...updatedStats,
-      correct: newCorrect,
-      attempts: newAttempts,
-      lastSessionDate: new Date().toISOString(),
-    });
-
-    setLastResult(isCorrect);
-    setHasAnswered(true);
-    // Immediately hide choices to prevent them showing on next question
-    setShowHelp(false);
-
-    setTimeout(() => {
-      setIndex((i) => i + 1);
-      setLastResult(null);
-      setUserInput("");
-      setHasAnswered(false);
-    }, 2500);
-  }
+  const failedWordIds = getFailedWordIds();
+  const totalUniqueWords = getTotalUniqueWords();
 
   function handleTextSubmit(e?: React.FormEvent) {
     e?.preventDefault();
-    if (!userInput.trim() || hasAnswered) return;
-
-    const correctAnswer = mode === "de-to-en" ? current.en : current.de;
-    const isCorrect = userInput.trim().toLowerCase() === correctAnswer.toLowerCase();
-
-    handleChoice(isCorrect);
+    if (!displayWord) return;
+    const correctAnswer = mode === "de-to-en" ? displayWord.en : displayWord.de;
+    submitTextAnswer(correctAnswer, displayWord);
   }
 
   const accuracy = calculateAccuracy(correct, attempts);
+
+  if (!displayWord) {
+    return <div className="app apple-ui"><main><p>Loading...</p></main></div>;
+  }
 
   return (
     <div className="app apple-ui">
@@ -253,10 +149,7 @@ function App() {
                 <button
                   key="all"
                   className={difficulty === "all" ? "difficulty-pill active" : "difficulty-pill"}
-                  onClick={() => {
-                    setDifficulty("all");
-                    setIndex(0);
-                  }}
+                  onClick={() => setDifficulty("all", VOCAB)}
                   type="button"
                 >
                   All
@@ -265,10 +158,7 @@ function App() {
                   <button
                     key={d}
                     className={difficulty === d ? "difficulty-pill active" : "difficulty-pill"}
-                    onClick={() => {
-                      setDifficulty(d);
-                      setIndex(0);
-                    }}
+                    onClick={() => setDifficulty(d, VOCAB)}
                     type="button"
                   >
                     {d}
@@ -278,10 +168,7 @@ function App() {
                   <button
                     key="failed"
                     className={difficulty === "failed" ? "difficulty-pill active failed-words-pill" : "difficulty-pill failed-words-pill"}
-                    onClick={() => {
-                      setDifficulty("failed");
-                      setIndex(0);
-                    }}
+                    onClick={() => setDifficulty("failed", VOCAB)}
                     type="button"
                   >
                     Failed Words ({failedWordIds.length})
@@ -291,10 +178,10 @@ function App() {
             </div>
 
             <div className="menu-section">
-              <button className="menu-action-btn" onClick={handleRestartQuiz} type="button">
+              <button className="menu-action-btn" onClick={restartQuiz} type="button">
                 Restart Quiz
               </button>
-              <button className="menu-action-btn danger" onClick={handleResetStats} type="button">
+              <button className="menu-action-btn danger" onClick={resetStats} type="button">
                 Reset Stats
               </button>
             </div>
@@ -309,15 +196,15 @@ function App() {
       )}
 
       <main>
-        {filtered.length === 0 ? (
+        {shuffled.length === 0 ? (
           <p>No vocabulary for the selected filters.</p>
         ) : (
           <div className="card card-game">
             <div className="prompt">
               <strong>
-                #{index + 1} / {filtered.length}
+                #{index + 1} / {shuffled.length}
               </strong>
-              <h2>{mode === "de-to-en" ? current.de : current.en}</h2>
+              <h2>{mode === "de-to-en" ? displayWord.de : displayWord.en}</h2>
             </div>
 
             <form onSubmit={handleTextSubmit} className="text-answer">
@@ -341,7 +228,7 @@ function App() {
 
             {lastResult !== null && !showHelp && (
               <div className={`feedback ${lastResult ? "correct-feedback" : "wrong-feedback"}`}>
-                {lastResult ? "Correct! ✓" : `Wrong. Correct answer: ${mode === "de-to-en" ? current.en : current.de}`}
+                {lastResult ? "Correct! ✓" : `Wrong. Correct answer: ${mode === "de-to-en" ? displayWord.en : displayWord.de}`}
               </div>
             )}
 
@@ -349,7 +236,7 @@ function App() {
               <p className="help-text">or</p>
               <button
                 className="help-btn"
-                onClick={() => setShowHelp(true)}
+                onClick={toggleShowHelp}
                 disabled={showHelp || hasAnswered}
                 type="button"
               >
@@ -359,7 +246,7 @@ function App() {
 
             {showHelp && (
               <div className="choices">
-                {choices.map((choice, i) => (
+                {displayChoices.map((choice, i) => (
                   <button
                     key={i}
                     className={
@@ -377,7 +264,7 @@ function App() {
                         : "")
                     }
                     disabled={hasAnswered}
-                    onClick={() => handleChoice(choice.isCorrect)}
+                    onClick={() => handleAnswer(choice.isCorrect, displayWord)}
                   >
                     {choice.text}
                   </button>
@@ -386,8 +273,8 @@ function App() {
             )}
 
             <div className="card-meta">
-              <span className="tags-list">{current.tags.join(", ")}</span>
-              <span className="difficulty">{current.difficulty}</span>
+              <span className="tags-list">{displayWord.tags.join(", ")}</span>
+              <span className="difficulty">{displayWord.difficulty}</span>
             </div>
           </div>
         )}
